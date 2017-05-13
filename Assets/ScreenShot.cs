@@ -1,8 +1,8 @@
 ﻿using UnityEngine;
 
 public class ScreenShot : MonoBehaviour {
-    private const int SizeW = 1024;
-    private const int SizeH = 1024;
+    private const int SizeW = 512;
+    private const int SizeH = 512;
     private const int Depth = 24;
 
     private const string FileHead = "UnityChan_";
