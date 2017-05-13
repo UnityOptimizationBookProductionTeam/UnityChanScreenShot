@@ -15,9 +15,7 @@ You can switch between English and Japanese display.
 Create an alpha image of only unity-chan.  
 The posture of limbs can be changed by IK.  
 Lighting has been changed to the front of the camera.  
-
-Please edit the code if you want to change the size of the image.  
-[ScreenShot.cs](https://github.com/manakamic/UnityChanScreenShot/blob/master/Assets/ScreenShot.cs#L4-L5)
+The size of the image is the same as the screen size of UnityEditor.  
 
 *Sample image(Create with this tool)*  
 ![Sample image](/sample.png)

@@ -1,91 +1,73 @@
 ﻿using UnityEngine;
+using UnityEngine.UI;
 
 public class ScreenShot : MonoBehaviour {
-    private const int SizeW = 512;
-    private const int SizeH = 512;
-    private const int Depth = 24;
+    private const int Depth = 32;
 
     private const string FileHead = "UnityChan_";
     private const string FileConnect = "_";
     private const string FileConnect2 = "-";
 
     [SerializeField]
-    private Camera _mainCamera;
+    private UnityChan.FaceUpdate _faceUpdate;
 
     [SerializeField]
-    private Camera _camera;
+    private MeshRenderer _plane;
 
-    private RenderTexture _renderTexture;
+    [SerializeField]
+    private Canvas _ui;
 
-    private bool _screenShot;
+    private bool _start;
 
     void Update() {
-        if (!_screenShot && Input.GetKeyDown(KeyCode.O)) {
-            StartScreenShot();
+        if (!_start && Input.GetKeyDown(KeyCode.O)) {
+            _faceUpdate.isGUI = false;
+            _plane.enabled = false;
+            _ui.enabled = false;
+
+            _start = true;
         }
     }
 
-    public void OnPostRender() {
-        _mainCamera.enabled = true;
-        _camera.enabled = false;
+    public void OnRenderImage(RenderTexture src, RenderTexture dest) {
+        Graphics.Blit(src, dest);
 
-        _screenShot = true;
-
-        SaveScreenShot();
-    }
-
-    public void StartScreenShot() {
-        if (_screenShot) {
+        if (!_start) {
             return;
         }
 
-        _mainCamera.enabled = false;
-        _camera.enabled = true;
+        SaveRenderTexture(src);
 
-        Transform mc = _mainCamera.transform;
-        Transform c = _camera.transform;
+        _faceUpdate.isGUI = true;
+        _plane.enabled = true;
+        _ui.enabled = true;
 
-        c.position = mc.position;
-        c.rotation = mc.rotation;
-
-        _camera.fieldOfView = _mainCamera.fieldOfView;
-
-        _renderTexture = RenderTexture.GetTemporary(SizeW, SizeH, Depth, RenderTextureFormat.ARGB32);
-
-        _camera.targetTexture = _renderTexture;
-
-        _screenShot = false;
+        _start = false;
     }
 
-    public void SaveScreenShot() {
-        if (!_screenShot) {
-            return;
-        }
-
+    public void SaveRenderTexture(RenderTexture dest) {
         RenderTexture original = RenderTexture.active;
 
-        RenderTexture.active = _renderTexture;
+        RenderTexture.active = dest;
 
-        var tex2d = new Texture2D(SizeW, SizeH, TextureFormat.ARGB32, false, false);
-        var rect = new Rect(0.0f, 0.0f, SizeW, SizeH);
+        int w = Screen.width, h = Screen.height;
+        var tex2d = new Texture2D(w, h, TextureFormat.ARGB32, false, true);
+        var rect = new Rect(0.0f, 0.0f, (float)w, (float)h);
 
         tex2d.ReadPixels(rect, 0, 0);
         tex2d.Apply(false, false);
 
         RenderTexture.active = original;
 
-        RenderTexture.ReleaseTemporary(_renderTexture);
-        _renderTexture = null;
-
         byte[] bin = tex2d.EncodeToPNG();
 
+        System.IO.File.WriteAllBytes(CreateFileName(), bin);
+    }
+
+    private string CreateFileName() {
         System.DateTime dt = System.DateTime.Now;
 
-        string fileName = FileHead + dt.Year.ToString() + dt.Month.ToString("D2") + dt.Day.ToString("D2") + FileConnect +
+        return FileHead + dt.Year.ToString() + dt.Month.ToString("D2") + dt.Day.ToString("D2") + FileConnect +
             dt.Hour.ToString("D2") + FileConnect2 + dt.Minute.ToString("D2") + FileConnect2 + dt.Second.ToString("D2") + ".png";
-
-        System.IO.File.WriteAllBytes(fileName, bin);
-
-        _screenShot = false;
     }
 }
