@@ -19,6 +19,7 @@ Lighting has been changed to the front of the camera.
 Please edit the code if you want to change the size of the image.  
 [ScreenShot.cs](https://github.com/manakamic/UnityChanScreenShot/blob/master/Assets/ScreenShot.cs#L4-L5)
 
+*Sample image(Create with this tool)*  
 ![Sample image](/sample.png)
 
 # Operation
