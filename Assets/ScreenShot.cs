@@ -54,8 +54,8 @@ public class ScreenShot : MonoBehaviour {
         var tex2d = new Texture2D(w, h, TextureFormat.ARGB32, false, true);
         var rect = new Rect(0.0f, 0.0f, (float)w, (float)h);
 
-        tex2d.ReadPixels(rect, 0, 0);
-        tex2d.Apply(false, false);
+        tex2d.ReadPixels(rect, 0, 0, false);
+        //tex2d.Apply(false, false);
 
         RenderTexture.active = original;
 
