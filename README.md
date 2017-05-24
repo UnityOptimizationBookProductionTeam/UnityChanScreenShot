@@ -16,6 +16,10 @@ You can switch between English and Japanese display.
 Create a pink background of only unity-chan.  
 Please retouch and use it.  
   
+Set the Game Window to the size of the image you want to capture.  
+For example 512 x 152  
+Then change the camera position with mouse operation of the original function.  
+  
 The posture of limbs can be changed by IK.  
 Lighting has been changed to the front of the camera.  
 The size of the image is the same as the screen size of UnityEditor.  
@@ -62,6 +66,6 @@ Return to the posture of animation
 
 # History
 
-2017/05/25--
+2017/05/25  
 Changed to pink background for bug where outline is not displayed.  
 
