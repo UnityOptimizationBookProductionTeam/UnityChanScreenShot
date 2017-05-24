@@ -12,7 +12,10 @@ unity-chan License is attached to the "UnityChanLicense" folder of the project.
 You can switch between English and Japanese display.  
 
 # Details
-Create an alpha image of only unity-chan.  
+~~Create an alpha image of only unity-chan.~~  
+Create a pink background of only unity-chan.  
+Please retouch and use it.  
+  
 The posture of limbs can be changed by IK.  
 Lighting has been changed to the front of the camera.  
 The size of the image is the same as the screen size of UnityEditor.  
@@ -57,5 +60,8 @@ Reset the active IK now
 Return to the posture of animation  
 
 
+# History
 
+2017/05/25--
+Changed to pink background for bug where outline is not displayed.  
 
