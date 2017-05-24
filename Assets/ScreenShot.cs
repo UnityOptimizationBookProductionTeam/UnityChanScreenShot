@@ -12,6 +12,9 @@ public class ScreenShot : MonoBehaviour {
     private const string FileConnect2 = "-";
 
     [SerializeField]
+    private Camera _self;
+
+    [SerializeField]
     private UnityChan.FaceUpdate _faceUpdate;
 
     [SerializeField]
@@ -21,6 +24,14 @@ public class ScreenShot : MonoBehaviour {
     private Canvas _ui;
 
     private bool _start;
+
+    void Start() {
+#if CAPTURE
+         _self.backgroundColor = new Color(1.0f, 0.0f, 1.0f, 0.0f);
+#else
+        _self.backgroundColor = new Color(0.0f, 0.0f, 0.0f, 0.0f);
+#endif
+    }
 
     void Update() {
         if (!_start && Input.GetKeyDown(KeyCode.O)) {

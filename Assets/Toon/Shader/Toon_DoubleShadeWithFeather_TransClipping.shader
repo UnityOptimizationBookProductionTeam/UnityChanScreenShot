@@ -30,7 +30,7 @@ Shader "UnityChanToonShader/Toon_DoubleShadeWithFeather_TransClipping" {
         _HighColor ("HighColor", Color) = (1,1,1,1)
         [MaterialToggle] _Is_LightColor_HighColor ("Is_LightColor_HighColor", Float ) = 1
         [MaterialToggle] _Is_NormalMapToHighColor ("Is_NormalMapToHighColor", Float ) = 0
-        _HighColor_Power ("HighColor_Power", Range(0, 1)) = 0.1
+        _HighColor_Power ("HighColor_Power", Range(0, 1)) = 0
         [MaterialToggle] _Is_SpecularToHighColor ("Is_SpecularToHighColor", Float ) = 0
         [MaterialToggle] _Is_BlendAddToHiColor ("Is_BlendAddToHiColor", Float ) = 0
         [MaterialToggle] _Is_UseTweakHighColorOnShadow ("Is_UseTweakHighColorOnShadow", Float ) = 0
@@ -41,6 +41,8 @@ Shader "UnityChanToonShader/Toon_DoubleShadeWithFeather_TransClipping" {
         [MaterialToggle] _Is_LightColor_RimLight ("Is_LightColor_RimLight", Float ) = 1
         [MaterialToggle] _Is_NormalMapToRimLight ("Is_NormalMapToRimLight", Float ) = 0
         _RimLight_Power ("RimLight_Power", Range(0, 1)) = 0.1
+        _RimLight_InsideMask ("RimLight_InsideMask", Range(0.0001, 1)) = 0.0001
+        [MaterialToggle] _RimLight_FeatherOff ("RimLight_FeatherOff", Float ) = 0
         [MaterialToggle] _MatCap ("MatCap", Float ) = 0
         _MatCap_Sampler ("MatCap_Sampler", 2D) = "black" {}
         _MatCapColor ("MatCapColor", Color) = (1,1,1,1)
@@ -66,9 +68,8 @@ Shader "UnityChanToonShader/Toon_DoubleShadeWithFeather_TransClipping" {
     }
     SubShader {
         Tags {
-            "IgnoreProjector"="True"
-            "Queue"="Transparent"
-            "RenderType"="Transparent"
+            "Queue"="AlphaTest"
+            "RenderType"="TransparentCutout"
         }
         Pass {
             Name "Outline"
@@ -97,15 +98,16 @@ Shader "UnityChanToonShader/Toon_DoubleShadeWithFeather_TransClipping" {
             }
             Blend SrcAlpha OneMinusSrcAlpha
             Cull[_CullMode]
-            ZWrite Off
+            
             
             CGPROGRAM
             #pragma vertex vert
             #pragma fragment frag
             #define UNITY_PASS_FORWARDBASE
             #include "UnityCG.cginc"
+            #include "AutoLight.cginc"
             #include "Lighting.cginc"
-            #pragma multi_compile_fwdbase
+            #pragma multi_compile_fwdbase_fullshadows
             #pragma multi_compile_fog
             #pragma only_renderers d3d9 d3d11 glcore gles gles3 metal xboxone ps4 
             #pragma target 3.0
@@ -164,6 +166,8 @@ Shader "UnityChanToonShader/Toon_DoubleShadeWithFeather_TransClipping" {
             uniform fixed _Is_LightColor_RimLight;
             uniform fixed _Is_LightColor_MatCap;
             uniform float _Tweak_SystemShadowsLevel;
+            uniform float _RimLight_InsideMask;
+            uniform fixed _RimLight_FeatherOff;
             struct VertexInput {
                 float4 vertex : POSITION;
                 float3 normal : NORMAL;
@@ -177,7 +181,8 @@ Shader "UnityChanToonShader/Toon_DoubleShadeWithFeather_TransClipping" {
                 float3 normalDir : TEXCOORD2;
                 float3 tangentDir : TEXCOORD3;
                 float3 bitangentDir : TEXCOORD4;
-                UNITY_FOG_COORDS(5)
+                LIGHTING_COORDS(5,6)
+                UNITY_FOG_COORDS(7)
             };
             VertexOutput vert (VertexInput v) {
                 VertexOutput o = (VertexOutput)0;
@@ -189,13 +194,11 @@ Shader "UnityChanToonShader/Toon_DoubleShadeWithFeather_TransClipping" {
                 float3 lightColor = _LightColor0.rgb;
                 o.pos = UnityObjectToClipPos(v.vertex );
                 UNITY_TRANSFER_FOG(o,o.pos);
+                TRANSFER_VERTEX_TO_FRAGMENT(o)
                 return o;
             }
-            float4 frag(VertexOutput i, float facing : VFACE) : COLOR {
-                float isFrontFace = ( facing >= 0 ? 1 : 0 );
-                float faceSign = ( facing >= 0 ? 1 : -1 );
+            float4 frag(VertexOutput i) : COLOR {
                 i.normalDir = normalize(i.normalDir);
-                i.normalDir *= faceSign;
                 float3x3 tangentTransform = float3x3( i.tangentDir, i.bitangentDir, i.normalDir);
                 float3 viewDirection = normalize(_WorldSpaceCameraPos.xyz - i.posWorld.xyz);
                 float2 Set_UV0 = i.uv0;
@@ -216,7 +219,7 @@ Shader "UnityChanToonShader/Toon_DoubleShadeWithFeather_TransClipping" {
                 float3 lightColor = _LightColor0.rgb;
                 float3 halfDirection = normalize(viewDirection+lightDirection);
 ////// Lighting:
-                float attenuation = 1;
+                float attenuation = LIGHT_ATTENUATION(i);
                 float3 node_9970 = (_BaseColor.rgb*_BaseMap_var.rgb);
                 float3 Set_LightColor = _LightColor0.rgb;
                 float3 Set_BaseColor = lerp( node_9970, (node_9970*Set_LightColor), _Is_LightColor_Base );
@@ -248,7 +251,10 @@ Shader "UnityChanToonShader/Toon_DoubleShadeWithFeather_TransClipping" {
                 float node_2595 = Set_FinalShadowSample;
                 float3 Set_HighColor = (lerp( saturate((node_1702-node_6262)), node_1702, _Is_BlendAddToHiColor )+lerp( node_5205, (node_5205*((1.0 - node_2595)+(node_2595*_TweakHighColorOnShadow))), _Is_UseTweakHighColorOnShadow ));
                 float3 node_3558 = Set_HighColor;
-                float3 Set_RimLight = (lerp( _RimLightColor.rgb, (_RimLightColor.rgb*Set_LightColor), _Is_LightColor_RimLight )*pow((1.0 - dot(lerp( i.normalDir, normalDirection, _Is_NormalMapToRimLight ),viewDirection)),exp2(lerp(3,0,_RimLight_Power))));
+                float node_7879 = pow((1.0 - dot(lerp( i.normalDir, normalDirection, _Is_NormalMapToRimLight ),viewDirection)),exp2(lerp(3,0,_RimLight_Power)));
+                float node_8606 = 1.0;
+                float node_9273 = 0.0;
+                float3 Set_RimLight = (lerp( _RimLightColor.rgb, (_RimLightColor.rgb*Set_LightColor), _Is_LightColor_RimLight )*saturate(lerp( (node_9273 + ( (node_7879 - _RimLight_InsideMask) * (node_8606 - node_9273) ) / (node_8606 - _RimLight_InsideMask)), step(_RimLight_InsideMask,node_7879), _RimLight_FeatherOff )));
                 float3 _RimLight_var = lerp( node_3558, (node_3558+Set_RimLight), _RimLight );
                 float node_254_ang = (_Rotate_MatCapUV*3.141592654);
                 float node_254_spd = 1.0;
@@ -287,7 +293,7 @@ Shader "UnityChanToonShader/Toon_DoubleShadeWithFeather_TransClipping" {
             }
             Blend One One
             Cull[_CullMode]
-            ZWrite Off
+            
             
             CGPROGRAM
             #pragma vertex vert
@@ -296,7 +302,7 @@ Shader "UnityChanToonShader/Toon_DoubleShadeWithFeather_TransClipping" {
             #include "UnityCG.cginc"
             #include "AutoLight.cginc"
             #include "Lighting.cginc"
-            #pragma multi_compile_fwdadd
+            #pragma multi_compile_fwdadd_fullshadows
             #pragma multi_compile_fog
             #pragma only_renderers d3d9 d3d11 glcore gles gles3 metal xboxone ps4 
             #pragma target 3.0
@@ -355,6 +361,8 @@ Shader "UnityChanToonShader/Toon_DoubleShadeWithFeather_TransClipping" {
             uniform fixed _Is_LightColor_RimLight;
             uniform fixed _Is_LightColor_MatCap;
             uniform float _Tweak_SystemShadowsLevel;
+            uniform float _RimLight_InsideMask;
+            uniform fixed _RimLight_FeatherOff;
             struct VertexInput {
                 float4 vertex : POSITION;
                 float3 normal : NORMAL;
@@ -384,11 +392,8 @@ Shader "UnityChanToonShader/Toon_DoubleShadeWithFeather_TransClipping" {
                 TRANSFER_VERTEX_TO_FRAGMENT(o)
                 return o;
             }
-            float4 frag(VertexOutput i, float facing : VFACE) : COLOR {
-                float isFrontFace = ( facing >= 0 ? 1 : 0 );
-                float faceSign = ( facing >= 0 ? 1 : -1 );
+            float4 frag(VertexOutput i) : COLOR {
                 i.normalDir = normalize(i.normalDir);
-                i.normalDir *= faceSign;
                 float3x3 tangentTransform = float3x3( i.tangentDir, i.bitangentDir, i.normalDir);
                 float3 viewDirection = normalize(_WorldSpaceCameraPos.xyz - i.posWorld.xyz);
                 float2 Set_UV0 = i.uv0;
@@ -441,7 +446,10 @@ Shader "UnityChanToonShader/Toon_DoubleShadeWithFeather_TransClipping" {
                 float node_2595 = Set_FinalShadowSample;
                 float3 Set_HighColor = (lerp( saturate((node_1702-node_6262)), node_1702, _Is_BlendAddToHiColor )+lerp( node_5205, (node_5205*((1.0 - node_2595)+(node_2595*_TweakHighColorOnShadow))), _Is_UseTweakHighColorOnShadow ));
                 float3 node_3558 = Set_HighColor;
-                float3 Set_RimLight = (lerp( _RimLightColor.rgb, (_RimLightColor.rgb*Set_LightColor), _Is_LightColor_RimLight )*pow((1.0 - dot(lerp( i.normalDir, normalDirection, _Is_NormalMapToRimLight ),viewDirection)),exp2(lerp(3,0,_RimLight_Power))));
+                float node_7879 = pow((1.0 - dot(lerp( i.normalDir, normalDirection, _Is_NormalMapToRimLight ),viewDirection)),exp2(lerp(3,0,_RimLight_Power)));
+                float node_8606 = 1.0;
+                float node_9273 = 0.0;
+                float3 Set_RimLight = (lerp( _RimLightColor.rgb, (_RimLightColor.rgb*Set_LightColor), _Is_LightColor_RimLight )*saturate(lerp( (node_9273 + ( (node_7879 - _RimLight_InsideMask) * (node_8606 - node_9273) ) / (node_8606 - _RimLight_InsideMask)), step(_RimLight_InsideMask,node_7879), _RimLight_FeatherOff )));
                 float3 _RimLight_var = lerp( node_3558, (node_3558+Set_RimLight), _RimLight );
                 float node_254_ang = (_Rotate_MatCapUV*3.141592654);
                 float node_254_spd = 1.0;
@@ -479,7 +487,7 @@ Shader "UnityChanToonShader/Toon_DoubleShadeWithFeather_TransClipping" {
                 "LightMode"="ShadowCaster"
             }
             Offset 1, 1
-            Cull Off
+            Cull Back
             
             CGPROGRAM
             #pragma vertex vert
@@ -512,9 +520,7 @@ Shader "UnityChanToonShader/Toon_DoubleShadeWithFeather_TransClipping" {
                 TRANSFER_SHADOW_CASTER(o)
                 return o;
             }
-            float4 frag(VertexOutput i, float facing : VFACE) : COLOR {
-                float isFrontFace = ( facing >= 0 ? 1 : 0 );
-                float faceSign = ( facing >= 0 ? 1 : -1 );
+            float4 frag(VertexOutput i) : COLOR {
                 float2 Set_UV0 = i.uv0;
                 float2 node_5271 = Set_UV0;
                 float4 _ClippingMask_var = tex2D(_ClippingMask,TRANSFORM_TEX(node_5271, _ClippingMask));

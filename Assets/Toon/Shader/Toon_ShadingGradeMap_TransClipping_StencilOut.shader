@@ -31,7 +31,7 @@ Shader "UnityChanToonShader/Toon_ShadingGradeMap_TransClipping_StencilOut" {
         _HighColor ("HighColor", Color) = (1,1,1,1)
         [MaterialToggle] _Is_LightColor_HighColor ("Is_LightColor_HighColor", Float ) = 1
         [MaterialToggle] _Is_NormalMapToHighColor ("Is_NormalMapToHighColor", Float ) = 0
-        _HighColor_Power ("HighColor_Power", Range(0, 1)) = 0.1
+        _HighColor_Power ("HighColor_Power", Range(0, 1)) = 0
         [MaterialToggle] _Is_SpecularToHighColor ("Is_SpecularToHighColor", Float ) = 0
         [MaterialToggle] _Is_BlendAddToHiColor ("Is_BlendAddToHiColor", Float ) = 0
         [MaterialToggle] _Is_UseTweakHighColorOnShadow ("Is_UseTweakHighColorOnShadow", Float ) = 0
@@ -40,8 +40,10 @@ Shader "UnityChanToonShader/Toon_ShadingGradeMap_TransClipping_StencilOut" {
         [MaterialToggle] _RimLight ("RimLight", Float ) = 0
         _RimLightColor ("RimLightColor", Color) = (1,1,1,1)
         [MaterialToggle] _Is_LightColor_RimLight ("Is_LightColor_RimLight", Float ) = 1
-        _RimLight_Power ("RimLight_Power", Range(0, 1)) = 0.1
         [MaterialToggle] _Is_NormalMapToRimLight ("Is_NormalMapToRimLight", Float ) = 0
+        _RimLight_Power ("RimLight_Power", Range(0, 1)) = 0.1
+        _RimLight_InsideMask ("RimLight_InsideMask", Range(0.0001, 1)) = 0.0001
+        [MaterialToggle] _RimLight_FeatherOff ("RimLight_FeatherOff", Float ) = 0
         [MaterialToggle] _MatCap ("MatCap", Float ) = 0
         _MatCap_Sampler ("MatCap_Sampler", 2D) = "black" {}
         _MatCapColor ("MatCapColor", Color) = (1,1,1,1)
@@ -67,9 +69,8 @@ Shader "UnityChanToonShader/Toon_ShadingGradeMap_TransClipping_StencilOut" {
     }
     SubShader {
         Tags {
-            "IgnoreProjector"="True"
-            "Queue"="Transparent"   //StencilOut _TransClipping
-            "RenderType"="Transparent"
+            "Queue"="AlphaTest"   //StencilOut Opaque and _Clipping
+            "RenderType"="TransparentCutout"
         }
         Pass {
             Name "Outline"
@@ -105,8 +106,7 @@ Shader "UnityChanToonShader/Toon_ShadingGradeMap_TransClipping_StencilOut" {
             }
             Blend SrcAlpha OneMinusSrcAlpha
             Cull[_CullMode]
-            ZWrite Off
-
+            
             Stencil {
                 Ref[_StencilNo]
                 Comp NotEqual
@@ -119,8 +119,9 @@ Shader "UnityChanToonShader/Toon_ShadingGradeMap_TransClipping_StencilOut" {
             #pragma fragment frag
             #define UNITY_PASS_FORWARDBASE
             #include "UnityCG.cginc"
+            #include "AutoLight.cginc"
             #include "Lighting.cginc"
-            #pragma multi_compile_fwdbase
+            #pragma multi_compile_fwdbase_fullshadows
             #pragma multi_compile_fog
             #pragma only_renderers d3d9 d3d11 glcore gles gles3 metal xboxone ps4 
             #pragma target 3.0
@@ -179,6 +180,8 @@ Shader "UnityChanToonShader/Toon_ShadingGradeMap_TransClipping_StencilOut" {
             uniform fixed _Is_LightColor_RimLight;
             uniform fixed _Is_LightColor_MatCap;
             uniform float _Tweak_SystemShadowsLevel;
+            uniform float _RimLight_InsideMask;
+            uniform fixed _RimLight_FeatherOff;
             struct VertexInput {
                 float4 vertex : POSITION;
                 float3 normal : NORMAL;
@@ -192,7 +195,8 @@ Shader "UnityChanToonShader/Toon_ShadingGradeMap_TransClipping_StencilOut" {
                 float3 normalDir : TEXCOORD2;
                 float3 tangentDir : TEXCOORD3;
                 float3 bitangentDir : TEXCOORD4;
-                UNITY_FOG_COORDS(5)
+                LIGHTING_COORDS(5,6)
+                UNITY_FOG_COORDS(7)
             };
             VertexOutput vert (VertexInput v) {
                 VertexOutput o = (VertexOutput)0;
@@ -204,6 +208,7 @@ Shader "UnityChanToonShader/Toon_ShadingGradeMap_TransClipping_StencilOut" {
                 float3 lightColor = _LightColor0.rgb;
                 o.pos = UnityObjectToClipPos(v.vertex );
                 UNITY_TRANSFER_FOG(o,o.pos);
+                TRANSFER_VERTEX_TO_FRAGMENT(o)
                 return o;
             }
             float4 frag(VertexOutput i, float facing : VFACE) : COLOR {
@@ -231,7 +236,7 @@ Shader "UnityChanToonShader/Toon_ShadingGradeMap_TransClipping_StencilOut" {
                 float3 lightColor = _LightColor0.rgb;
                 float3 halfDirection = normalize(viewDirection+lightDirection);
 ////// Lighting:
-                float attenuation = 1;
+                float attenuation = LIGHT_ATTENUATION(i);
                 float3 node_482 = (_BaseMap_var.rgb*_BaseColor.rgb);
                 float3 Set_LightColor = _LightColor0.rgb;
                 float3 node_7651 = Set_LightColor;
@@ -263,7 +268,10 @@ Shader "UnityChanToonShader/Toon_ShadingGradeMap_TransClipping_StencilOut" {
                 float node_7081 = Set_FinalShadowMask;
                 float3 Set_HighColor = (lerp( saturate((node_3441-node_4643)), node_3441, _Is_BlendAddToHiColor )+lerp( node_2397, (node_2397*((1.0 - node_7081)+(node_7081*_TweakHighColorOnShadow))), _Is_UseTweakHighColorOnShadow ));
                 float3 node_3159 = Set_HighColor;
-                float3 Set_RimLight = (lerp( _RimLightColor.rgb, (_RimLightColor.rgb*Set_LightColor), _Is_LightColor_RimLight )*pow((1.0 - dot(lerp( i.normalDir, normalDirection, _Is_NormalMapToRimLight ),viewDirection)),exp2(lerp(3,0,_RimLight_Power))));
+                float node_3992 = pow((1.0 - dot(lerp( i.normalDir, normalDirection, _Is_NormalMapToRimLight ),viewDirection)),exp2(lerp(3,0,_RimLight_Power)));
+                float node_7132 = 1.0;
+                float node_1745 = 0.0;
+                float3 Set_RimLight = (lerp( _RimLightColor.rgb, (_RimLightColor.rgb*Set_LightColor), _Is_LightColor_RimLight )*saturate(lerp( (node_1745 + ( (node_3992 - _RimLight_InsideMask) * (node_7132 - node_1745) ) / (node_7132 - _RimLight_InsideMask)), step(_RimLight_InsideMask,node_3992), _RimLight_FeatherOff )));
                 float3 _RimLight_var = lerp( node_3159, (node_3159+Set_RimLight), _RimLight );
                 float node_4345_ang = (_Rotate_MatCapUV*3.141592654);
                 float node_4345_spd = 1.0;
@@ -303,8 +311,7 @@ Shader "UnityChanToonShader/Toon_ShadingGradeMap_TransClipping_StencilOut" {
             }
             Blend One One
             Cull[_CullMode]
-            ZWrite Off
-
+            
             Stencil {
                 Ref[_StencilNo]
                 Comp NotEqual
@@ -319,7 +326,7 @@ Shader "UnityChanToonShader/Toon_ShadingGradeMap_TransClipping_StencilOut" {
             #include "UnityCG.cginc"
             #include "AutoLight.cginc"
             #include "Lighting.cginc"
-            #pragma multi_compile_fwdadd
+            #pragma multi_compile_fwdadd_fullshadows
             #pragma multi_compile_fog
             #pragma only_renderers d3d9 d3d11 glcore gles gles3 metal xboxone ps4 
             #pragma target 3.0
@@ -378,6 +385,8 @@ Shader "UnityChanToonShader/Toon_ShadingGradeMap_TransClipping_StencilOut" {
             uniform fixed _Is_LightColor_RimLight;
             uniform fixed _Is_LightColor_MatCap;
             uniform float _Tweak_SystemShadowsLevel;
+            uniform float _RimLight_InsideMask;
+            uniform fixed _RimLight_FeatherOff;
             struct VertexInput {
                 float4 vertex : POSITION;
                 float3 normal : NORMAL;
@@ -464,7 +473,10 @@ Shader "UnityChanToonShader/Toon_ShadingGradeMap_TransClipping_StencilOut" {
                 float node_7081 = Set_FinalShadowMask;
                 float3 Set_HighColor = (lerp( saturate((node_3441-node_4643)), node_3441, _Is_BlendAddToHiColor )+lerp( node_2397, (node_2397*((1.0 - node_7081)+(node_7081*_TweakHighColorOnShadow))), _Is_UseTweakHighColorOnShadow ));
                 float3 node_3159 = Set_HighColor;
-                float3 Set_RimLight = (lerp( _RimLightColor.rgb, (_RimLightColor.rgb*Set_LightColor), _Is_LightColor_RimLight )*pow((1.0 - dot(lerp( i.normalDir, normalDirection, _Is_NormalMapToRimLight ),viewDirection)),exp2(lerp(3,0,_RimLight_Power))));
+                float node_3992 = pow((1.0 - dot(lerp( i.normalDir, normalDirection, _Is_NormalMapToRimLight ),viewDirection)),exp2(lerp(3,0,_RimLight_Power)));
+                float node_7132 = 1.0;
+                float node_1745 = 0.0;
+                float3 Set_RimLight = (lerp( _RimLightColor.rgb, (_RimLightColor.rgb*Set_LightColor), _Is_LightColor_RimLight )*saturate(lerp( (node_1745 + ( (node_3992 - _RimLight_InsideMask) * (node_7132 - node_1745) ) / (node_7132 - _RimLight_InsideMask)), step(_RimLight_InsideMask,node_3992), _RimLight_FeatherOff )));
                 float3 _RimLight_var = lerp( node_3159, (node_3159+Set_RimLight), _RimLight );
                 float node_4345_ang = (_Rotate_MatCapUV*3.141592654);
                 float node_4345_spd = 1.0;

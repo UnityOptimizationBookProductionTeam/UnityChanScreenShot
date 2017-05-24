@@ -28,7 +28,7 @@ Shader "UnityChanToonShader/NoOutline/ToonColor_DoubleShadeWithFeather_TransClip
         _HighColor ("HighColor", Color) = (1,1,1,1)
         [MaterialToggle] _Is_LightColor_HighColor ("Is_LightColor_HighColor", Float ) = 1
         [MaterialToggle] _Is_NormalMapToHighColor ("Is_NormalMapToHighColor", Float ) = 0
-        _HighColor_Power ("HighColor_Power", Range(0, 1)) = 0.1
+        _HighColor_Power ("HighColor_Power", Range(0, 1)) = 0
         [MaterialToggle] _Is_SpecularToHighColor ("Is_SpecularToHighColor", Float ) = 0
         [MaterialToggle] _Is_BlendAddToHiColor ("Is_BlendAddToHiColor", Float ) = 0
         [MaterialToggle] _Is_UseTweakHighColorOnShadow ("Is_UseTweakHighColorOnShadow", Float ) = 0
@@ -39,6 +39,8 @@ Shader "UnityChanToonShader/NoOutline/ToonColor_DoubleShadeWithFeather_TransClip
         [MaterialToggle] _Is_LightColor_RimLight ("Is_LightColor_RimLight", Float ) = 1
         [MaterialToggle] _Is_NormalMapToRimLight ("Is_NormalMapToRimLight", Float ) = 0
         _RimLight_Power ("RimLight_Power", Range(0, 1)) = 0.1
+        _RimLight_InsideMask ("RimLight_InsideMask", Range(0.0001, 1)) = 0.0001
+        [MaterialToggle] _RimLight_FeatherOff ("RimLight_FeatherOff", Float ) = 0
         [MaterialToggle] _MatCap ("MatCap", Float ) = 0
         _MatCap_Sampler ("MatCap_Sampler", 2D) = "black" {}
         _MatCapColor ("MatCapColor", Color) = (1,1,1,1)
@@ -56,9 +58,8 @@ Shader "UnityChanToonShader/NoOutline/ToonColor_DoubleShadeWithFeather_TransClip
     }
     SubShader {
         Tags {
-            "IgnoreProjector"="True"
-            "Queue"="Transparent"
-            "RenderType"="Transparent"
+            "Queue"="AlphaTest"
+            "RenderType"="TransparentCutout"
         }
 
         UsePass "UnityChanToonShader/Toon_DoubleShadeWithFeather_TransClipping/FORWARD"

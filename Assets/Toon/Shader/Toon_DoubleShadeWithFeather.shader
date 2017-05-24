@@ -25,7 +25,7 @@ Shader "UnityChanToonShader/Toon_DoubleShadeWithFeather" {
         _HighColor ("HighColor", Color) = (1,1,1,1)
         [MaterialToggle] _Is_LightColor_HighColor ("Is_LightColor_HighColor", Float ) = 1
         [MaterialToggle] _Is_NormalMapToHighColor ("Is_NormalMapToHighColor", Float ) = 0
-        _HighColor_Power ("HighColor_Power", Range(0, 1)) = 0.1
+        _HighColor_Power ("HighColor_Power", Range(0, 1)) = 0
         [MaterialToggle] _Is_SpecularToHighColor ("Is_SpecularToHighColor", Float ) = 0
         [MaterialToggle] _Is_BlendAddToHiColor ("Is_BlendAddToHiColor", Float ) = 0
         [MaterialToggle] _Is_UseTweakHighColorOnShadow ("Is_UseTweakHighColorOnShadow", Float ) = 0
@@ -36,6 +36,8 @@ Shader "UnityChanToonShader/Toon_DoubleShadeWithFeather" {
         [MaterialToggle] _Is_LightColor_RimLight ("Is_LightColor_RimLight", Float ) = 1
         [MaterialToggle] _Is_NormalMapToRimLight ("Is_NormalMapToRimLight", Float ) = 0
         _RimLight_Power ("RimLight_Power", Range(0, 1)) = 0.1
+        _RimLight_InsideMask ("RimLight_InsideMask", Range(0.0001, 1)) = 0.0001
+        [MaterialToggle] _RimLight_FeatherOff ("RimLight_FeatherOff", Float ) = 0
         [MaterialToggle] _MatCap ("MatCap", Float ) = 0
         _MatCap_Sampler ("MatCap_Sampler", 2D) = "black" {}
         _MatCapColor ("MatCapColor", Color) = (1,1,1,1)
@@ -151,6 +153,8 @@ Shader "UnityChanToonShader/Toon_DoubleShadeWithFeather" {
             uniform fixed _Is_LightColor_RimLight;
             uniform fixed _Is_LightColor_MatCap;
             uniform float _Tweak_SystemShadowsLevel;
+            uniform float _RimLight_InsideMask;
+            uniform fixed _RimLight_FeatherOff;
             struct VertexInput {
                 float4 vertex : POSITION;
                 float3 normal : NORMAL;
@@ -230,7 +234,10 @@ Shader "UnityChanToonShader/Toon_DoubleShadeWithFeather" {
                 float node_2595 = Set_FinalShadowSample;
                 float3 Set_HighColor = (lerp( saturate((node_1702-node_6262)), node_1702, _Is_BlendAddToHiColor )+lerp( node_5205, (node_5205*((1.0 - node_2595)+(node_2595*_TweakHighColorOnShadow))), _Is_UseTweakHighColorOnShadow ));
                 float3 node_2379 = Set_HighColor;
-                float3 Set_RimLight = (lerp( _RimLightColor.rgb, (_RimLightColor.rgb*Set_LightColor), _Is_LightColor_RimLight )*pow((1.0 - dot(lerp( i.normalDir, normalDirection, _Is_NormalMapToRimLight ),viewDirection)),exp2(lerp(3,0,_RimLight_Power))));
+                float node_7879 = pow((1.0 - dot(lerp( i.normalDir, normalDirection, _Is_NormalMapToRimLight ),viewDirection)),exp2(lerp(3,0,_RimLight_Power)));
+                float node_4535 = 1.0;
+                float node_2699 = 0.0;
+                float3 Set_RimLight = (lerp( _RimLightColor.rgb, (_RimLightColor.rgb*Set_LightColor), _Is_LightColor_RimLight )*saturate(lerp( (node_2699 + ( (node_7879 - _RimLight_InsideMask) * (node_4535 - node_2699) ) / (node_4535 - _RimLight_InsideMask)), step(_RimLight_InsideMask,node_7879), _RimLight_FeatherOff )));
                 float3 _RimLight_var = lerp( node_2379, (node_2379+Set_RimLight), _RimLight );
                 float node_254_ang = (_Rotate_MatCapUV*3.141592654);
                 float node_254_spd = 1.0;
@@ -331,6 +338,8 @@ Shader "UnityChanToonShader/Toon_DoubleShadeWithFeather" {
             uniform fixed _Is_LightColor_RimLight;
             uniform fixed _Is_LightColor_MatCap;
             uniform float _Tweak_SystemShadowsLevel;
+            uniform float _RimLight_InsideMask;
+            uniform fixed _RimLight_FeatherOff;
             struct VertexInput {
                 float4 vertex : POSITION;
                 float3 normal : NORMAL;
@@ -410,7 +419,10 @@ Shader "UnityChanToonShader/Toon_DoubleShadeWithFeather" {
                 float node_2595 = Set_FinalShadowSample;
                 float3 Set_HighColor = (lerp( saturate((node_1702-node_6262)), node_1702, _Is_BlendAddToHiColor )+lerp( node_5205, (node_5205*((1.0 - node_2595)+(node_2595*_TweakHighColorOnShadow))), _Is_UseTweakHighColorOnShadow ));
                 float3 node_2379 = Set_HighColor;
-                float3 Set_RimLight = (lerp( _RimLightColor.rgb, (_RimLightColor.rgb*Set_LightColor), _Is_LightColor_RimLight )*pow((1.0 - dot(lerp( i.normalDir, normalDirection, _Is_NormalMapToRimLight ),viewDirection)),exp2(lerp(3,0,_RimLight_Power))));
+                float node_7879 = pow((1.0 - dot(lerp( i.normalDir, normalDirection, _Is_NormalMapToRimLight ),viewDirection)),exp2(lerp(3,0,_RimLight_Power)));
+                float node_4535 = 1.0;
+                float node_2699 = 0.0;
+                float3 Set_RimLight = (lerp( _RimLightColor.rgb, (_RimLightColor.rgb*Set_LightColor), _Is_LightColor_RimLight )*saturate(lerp( (node_2699 + ( (node_7879 - _RimLight_InsideMask) * (node_4535 - node_2699) ) / (node_4535 - _RimLight_InsideMask)), step(_RimLight_InsideMask,node_7879), _RimLight_FeatherOff )));
                 float3 _RimLight_var = lerp( node_2379, (node_2379+Set_RimLight), _RimLight );
                 float node_254_ang = (_Rotate_MatCapUV*3.141592654);
                 float node_254_spd = 1.0;

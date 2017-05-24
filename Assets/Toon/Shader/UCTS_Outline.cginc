@@ -1,8 +1,8 @@
-// Upgrade NOTE: replaced 'mul(UNITY_MATRIX_MVP,*)' with 'UnityObjectToClipPos(*)'
+ï»¿// Upgrade NOTE: replaced 'mul(UNITY_MATRIX_MVP,*)' with 'UnityObjectToClipPos(*)'
 
 // UCTS_Outline.cginc
 // 2017/03/08 N.Kobayashi (Unity Technologies Japan)
-// ƒJƒƒ‰ƒIƒtƒZƒbƒg•t‚«ƒAƒEƒgƒ‰ƒCƒ“iBaseColorƒ‰ƒCƒgƒJƒ‰[”½‰fC³”Åj
+// ã‚«ãƒ¡ãƒ©ã‚ªãƒ•ã‚»ãƒƒãƒˆä»˜ãã‚¢ã‚¦ãƒˆãƒ©ã‚¤ãƒ³ï¼ˆBaseColorãƒ©ã‚¤ãƒˆã‚«ãƒ©ãƒ¼åæ˜ ä¿®æ­£ç‰ˆï¼‰
 //
             uniform float4 _LightColor0;
             uniform float4 _BaseColor;
@@ -54,4 +54,4 @@
                 float3 Set_Outline_Color = lerp( _Outline_Color.rgb, (_Outline_Color.rgb*node_2878*node_2878), _Is_BlendBaseColor );
                 return fixed4(Set_Outline_Color,0);
             }
-// UCTS_Outline.cginc ‚±‚±‚Ü‚Å.
+// UCTS_Outline.cginc ã“ã“ã¾ã§.
