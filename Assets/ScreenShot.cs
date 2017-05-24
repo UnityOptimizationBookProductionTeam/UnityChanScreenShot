@@ -1,9 +1,12 @@
-﻿using UnityEngine;
+﻿#define CAPTURE
+
+#if CAPTURE
+using System.Collections;
+#endif
+using UnityEngine;
 using UnityEngine.UI;
 
 public class ScreenShot : MonoBehaviour {
-    private const int Depth = 32;
-
     private const string FileHead = "UnityChan_";
     private const string FileConnect = "_";
     private const string FileConnect2 = "-";
@@ -26,9 +29,28 @@ public class ScreenShot : MonoBehaviour {
             _ui.enabled = false;
 
             _start = true;
+
+#if CAPTURE
+            StartCoroutine(ScreenCapture());
+#endif
         }
     }
 
+#if CAPTURE
+    private IEnumerator ScreenCapture() {
+        yield return new WaitForEndOfFrame();
+
+        Application.CaptureScreenshot(CreateFileName());
+
+        yield return null;
+
+        _faceUpdate.isGUI = true;
+        _plane.enabled = true;
+        _ui.enabled = true;
+
+        _start = false;
+    }
+#else
     public void OnRenderImage(RenderTexture src, RenderTexture dest) {
         Graphics.Blit(src, dest);
 
@@ -63,6 +85,7 @@ public class ScreenShot : MonoBehaviour {
 
         System.IO.File.WriteAllBytes(CreateFileName(), bin);
     }
+#endif
 
     private string CreateFileName() {
         System.DateTime dt = System.DateTime.Now;
